@@ -51,7 +51,7 @@ class TextReasoningAgent:
         elif self.backend == Backend.GEMINI:
             self.api_key = os.getenv("GOOGLE_API_KEY")
             self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
-            self.model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-preview-07-2026")
+            self.model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
             if not self.api_key:
                 raise RuntimeError("Set GOOGLE_API_KEY for GEMINI backend")
 
