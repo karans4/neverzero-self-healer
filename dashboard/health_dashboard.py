@@ -1,15 +1,14 @@
-"""Simple health dashboard for the NeverZero Self-Healer demo.
+"""Interactive health dashboard for the NeverZero Self-Healer demo.
 
-Serves a minimal dashboard at http://localhost:8080 that the Gemini
-agent can screenshot and analyze. Shows real-time metrics from the
-NeverZero platform.
+Serves at http://localhost:8080. Includes clickable "Fix Auth" and
+"Clear Cache" buttons that the Computer Use agent can interact with.
 """
 import json
 import random
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Simulated metrics (in a real deployment, these would be fetched from NeverZero)
+# Global state
 metrics = {
     "system_status": "healthy",
     "error_count": 0,
@@ -25,7 +24,7 @@ metrics = {
 
 class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
-        pass  # Suppress default logging
+        pass
 
     def do_GET(self):
         if self.path == "/":
@@ -35,12 +34,40 @@ class DashboardHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    def do_POST(self):
+        if self.path == "/api/fix-auth":
+            self._fix_auth()
+        elif self.path == "/api/clear-cache":
+            self._clear_cache()
+        else:
+            self.send_error(404)
+
+    def _fix_auth(self):
+        metrics["error_count"] = 0
+        metrics["auth_failures"] = 0
+        metrics["system_status"] = "healthy"
+        metrics["last_event_time"] = time.time()
+        print(f"[Dashboard] Auth fixed at {time.strftime('%H:%M:%S')}")
+        self._json_response({"ok": True, "message": "Auth fixed"})
+
+    def _clear_cache(self):
+        metrics["last_event_time"] = time.time()
+        print(f"[Dashboard] Cache cleared at {time.strftime('%H:%M:%S')}")
+        self._json_response({"ok": True, "message": "Cache cleared"})
+
+    def _json_response(self, data: dict):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+
     def _serve_dashboard(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.end_headers()
 
-        # Simulate occasional issues for demo purposes
+        # Randomly inject errors for demo purposes
         if random.random() < 0.3:
             metrics["error_count"] = random.randint(1, 50)
             metrics["auth_failures"] = random.randint(1, 20)
@@ -54,6 +81,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         status_color = "#22c55e" if metrics["system_status"] == "healthy" else "#ef4444"
         status_emoji = "✅" if metrics["system_status"] == "healthy" else "⚠️"
+
+        # Show buttons only when there are issues
+        show_buttons = metrics["error_count"] > 0 or metrics["auth_failures"] > 0
 
         html = f"""<!DOCTYPE html>
 <html>
@@ -71,10 +101,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
         .card .value.green {{ color: #22c55e; }}
         .card .value.red {{ color: #ef4444; }}
         .card .value.yellow {{ color: #f59e0b; }}
-        .status-bar {{ background: #1e293b; border-radius: 12px; padding: 20px; max-width: 1200px; margin: 0 auto 20px auto; border: 1px solid #334155; display: flex; align-items: center; gap: 16px; }}
+        .status-bar {{ background: #1e293b; border-radius: 12px; padding: 20px; max-width: 1200px; margin: 0 auto 20px auto; border: 1px solid #334155; display: flex; align-items: center; gap: 16px; justify-content: space-between; }}
+        .status-left {{ display: flex; align-items: center; gap: 16px; }}
         .status-dot {{ width: 16px; height: 16px; border-radius: 50%; background: {status_color}; }}
         .status-text {{ font-size: 18px; font-weight: 600; }}
+        .fix-buttons {{ display: flex; gap: 12px; {'display: none;' if not show_buttons else ''} }}
+        .fix-btn {{ background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }}
+        .fix-btn:hover {{ background: #2563eb; }}
+        .fix-btn.secondary {{ background: #f59e0b; }}
+        .fix-btn.secondary:hover {{ background: #d97706; }}
         .footer {{ text-align: center; margin-top: 40px; color: #64748b; font-size: 12px; }}
+        .toast {{ position: fixed; bottom: 20px; right: 20px; background: #22c55e; color: white; padding: 12px 24px; border-radius: 8px; display: none; font-weight: 600; }}
     </style>
     <meta http-equiv="refresh" content="5">
 </head>
@@ -84,8 +121,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
         <p>Real-time platform monitoring · Self-Healing Enabled</p>
     </div>
     <div class="status-bar">
-        <div class="status-dot"></div>
-        <div class="status-text">{status_emoji} System Status: {metrics["system_status"].upper()}</div>
+        <div class="status-left">
+            <div class="status-dot"></div>
+            <div class="status-text">{status_emoji} System Status: {metrics["system_status"].upper()}</div>
+        </div>
+        <div class="fix-buttons" id="fixButtons">
+            <button class="fix-btn" id="fixAuthBtn" onclick="fixAuth()">🔧 Fix Auth</button>
+            <button class="fix-btn secondary" id="clearCacheBtn" onclick="clearCache()">🧹 Clear Cache</button>
+        </div>
     </div>
     <div class="grid">
         <div class="card">
@@ -124,6 +167,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
     <div class="footer">
         Powered by NeverZero · Gemini 3.5 Flash Computer Use · Self-Healing Agent
     </div>
+    <div class="toast" id="toast"></div>
+    <script>
+        function showToast(msg) {{
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        }}
+        function fixAuth() {{
+            fetch('/api/fix-auth', {{method: 'POST'}})
+                .then(r => r.json())
+                .then(d => {{ showToast(d.message); location.reload(); }})
+                .catch(e => showToast('Error: ' + e));
+        }}
+        function clearCache() {{
+            fetch('/api/clear-cache', {{method: 'POST'}})
+                .then(r => r.json())
+                .then(d => {{ showToast(d.message); location.reload(); }})
+                .catch(e => showToast('Error: ' + e));
+        }}
+    </script>
 </body>
 </html>"""
         self.wfile.write(html.encode())
@@ -131,6 +195,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _serve_metrics(self):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(json.dumps(metrics).encode())
 

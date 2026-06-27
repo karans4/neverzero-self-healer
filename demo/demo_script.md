@@ -6,66 +6,76 @@
 # Terminal 1: Start the health dashboard
 python dashboard/health_dashboard.py
 
-# Terminal 2: Run the self-healer (3 cycles, simulated)
-SELF_HEALER_SIMULATE=true python agent/healer.py
+# Terminal 2: Run the self-healer with Gemini (3 cycles)
+export GOOGLE_API_KEY="your-key"
+SELF_HEALER_BACKEND=gemini python agent/healer.py
 ```
 
 ## Recording Script (60 seconds)
 
 ### [0:00-0:05] Hook
 
-**Show:** The NeverZero health dashboard at `http://localhost:8080` — a dark-themed real-time metrics dashboard.
-
-**Say:** "This is NeverZero, a real-time AI platform. But who watches the watcher?"
-
-### [0:05-0:15] Problem
-
-**Show:** Dashboard showing error counts and auth failures. The numbers are red.
-
-**Say:** "When auth fails, events drop, and Redis cache goes stale, someone has to fix it. Usually a human. Usually at 3 AM."
-
-### [0:15-0:35] Solution — The Agent
-
-**Show:** Terminal running `python agent/healer.py`. The output shows:
-
+**Show:** The terminal starting the self-healer. Text shows:
 ```
-============================================================
 NeverZero Self-Healer Started
-Mode: SIMULATION
+Backend: gemini
 Poll Interval: 30s
-NeverZero Base: http://localhost:3000
-============================================================
-
-[SelfHealer] Starting monitoring cycle...
-[SelfHealer] Dashboard captured
-[SelfHealer] Context gathered:
-System Health: healthy
-Recent Error Events: 47
-Auth Failures (24h): 12
-...
-
-[SelfHealer] Agent reasoning:
-ALERT: Detected 47 failed auth events in the last 5 minutes.
-The auth service URL may be misconfigured.
-SUGGESTED FIX: Update the auth service URL to the correct endpoint.
-
-[SelfHealer] Fix applied: fix_auth_service_url
-[SelfHealer] Detail: {'ok': True, 'message': 'Auth service URL updated to https://pulse.ayushojha.com'}
+Dashboard URL: http://localhost:8080
 ```
 
-**Say:** "This is the NeverZero Self-Healer. It uses Gemini 3.5 Flash Computer Use to screenshot the dashboard, analyze it, and apply fixes through the API. No human needed."
+**Say:** "This is NeverZero, a real-time AI platform. But who fixes it when it breaks?"
+
+### [0:05-0:20] The Agent Opens a Browser
+
+**Show:** Terminal output showing the agent opening a browser and taking a screenshot:
+
+```
+[SelfHealer] Starting Computer Use cycle...
+[ComputerUse] Browser opened at http://localhost:8080
+[Step 1] Reasoning: Screenshot shows 47 auth failures. Need to click Fix Auth button.
+  -> clicked Fix Auth button at (640, 400)
+[Step 2] Reasoning: Dashboard refreshed. Errors cleared. DONE.
+```
+
+**Say:** "The Self-Healer opens a real browser, takes a screenshot, and sends it to Gemini 3.5 Flash. The model analyzes the dashboard and generates actual UI actions — clicks, scrolls, types."
+
+### [0:20-0:35] The Fix in Action
+
+**Show:** Split screen:
+- Left: The live dashboard showing red error counts
+- Right: Terminal showing the agent clicking the "Fix Auth" button
+
+**Show:** Dashboard refreshing to green after the click.
+
+**Say:** "It sees 47 auth failures, clicks the Fix Auth button, and verifies the fix worked. All in under 30 seconds."
 
 ### [0:35-0:50] Technical Deep Dive
 
-**Show:** Code split-screen: `gemini_computer_use.py` on the left, `healer.py` on the right.
+**Show:** Code showing the Computer Use loop:
 
-**Say:** "The agent captures the dashboard, sends it to Gemini 3.5 Flash with telemetry context, gets back a diagnosis, and triggers the appropriate fix — auth reconfiguration, cache clearing, or compaction."
+```python
+# agent/computer_use.py
+screenshot = page.screenshot()
+result = self._call_gemini(screenshot, task)
+for action in result["actions"]:
+    self._execute_action(action)  # click, type, scroll
+    # verify with new screenshot
+```
+
+**Say:** "This is genuine Computer Use. Gemini returns structured actions — click at x, y — and we execute them via Playwright. Not just text suggestions. Real UI automation."
 
 ### [0:50-0:58] Result
 
-**Show:** Dashboard refreshing — error counts drop to zero, status goes green.
+**Show:** Dashboard fully green. Summary showing:
+```
+SELF-HEALER SUMMARY
+Total cycles: 3
+Fixes applied: 1
+Health checks: 2
+Computer Use steps: 3 steps (done)
+```
 
-**Say:** "The system healed itself. From detection to fix in under 30 seconds."
+**Say:** "The system healed itself. Detected the issue, clicked the fix, verified it worked. No human needed."
 
 ### [0:58-1:00] Close
 
@@ -76,9 +86,10 @@ SUGGESTED FIX: Update the auth service URL to the correct endpoint.
 ## Post-Recording Checklist
 
 - [ ] Video is under 60 seconds
-- [ ] Clearly shows the code running
+- [ ] Clearly shows the browser opening and screenshot process
 - [ ] Highlights Gemini 3.5 Flash Computer Use integration
-- [ ] Shows the fix being applied and the dashboard improving
+- [ ] Shows the actual click being executed and the dashboard changing
+- [ ] Shows verification screenshot after the fix
 - [ ] Repo is public
 - [ ] All team members added to submission
 
@@ -88,4 +99,5 @@ SUGGESTED FIX: Update the auth service URL to the correct endpoint.
 - Keep terminal font size large (14pt+)
 - Use a dark theme for code
 - Speak clearly and concisely
-- Show the actual output, not just slides
+- Show the actual browser window, not just terminal output
+- The dashboard auto-refreshes every 5 seconds, so changes are visible

@@ -2,7 +2,7 @@
 
 > **Autonomous platform healing using Gemini 3.5 Flash Computer Use**
 
-A self-improving AI system that monitors the [NeverZero](https://github.com/ayushozha/NeverZero) real-time platform, detects anomalies via screenshot analysis, and applies fixes without human intervention.
+A self-improving AI system that monitors the [NeverZero](https://github.com/ayushozha/NeverZero) real-time platform, detects anomalies via screenshot analysis, **and clicks actual UI buttons to fix them** — without human intervention.
 
 ## 🎯 Hackathon Theme
 
@@ -10,24 +10,28 @@ A self-improving AI system that monitors the [NeverZero](https://github.com/ayus
 
 ## 🚀 What It Does
 
-1. **Captures** a screenshot of the NeverZero health dashboard
-2. **Analyzes** it using Gemini 3.5 Flash Computer Use (screenshot → reasoning → actions)
-3. **Gathers** telemetry context (health, events, auth stats)
-4. **Reasons** about anomalies and decides on a fix
-5. **Applies** the fix via NeverZero admin APIs (auth config, cache clearing, compaction)
-6. **Logs** everything for continual learning and auditability
+1. **Opens** the NeverZero health dashboard in a headless browser (Playwright)
+2. **Takes a screenshot** and sends it to Gemini 3.5 Flash
+3. **Gemini analyzes** the screenshot using Computer Use and returns structured UI actions
+4. **Executes** those actions via Playwright — clicks "Fix Auth" buttons, scrolls, types
+5. **Verifies** by taking another screenshot after the fix
+6. **Logs everything** for continual learning and auditability
+
+This is **genuine Computer Use** — the model generates "click at (x, y)" and we execute it on the real UI. Not just vision analysis.
 
 ## 🛠️ Built With
 
 - **Gemini 3.5 Flash** — Computer Use for visual dashboard analysis and UI action generation
+- **Playwright** — Browser automation that executes the model's UI actions
 - **NeverZero** — Real-time event platform being monitored (existing infrastructure)
-- **Python** — Agent orchestration and API integration
+- **Python** — Agent orchestration
 
 ## 📦 Quick Start
 
 ```bash
 # Install dependencies
 pip install -r requirements.txt
+playwright install chromium
 
 # Set your Gemini API key
 export GOOGLE_API_KEY="your-key-here"
@@ -36,12 +40,12 @@ export GOOGLE_API_KEY="your-key-here"
 python dashboard/health_dashboard.py &
 
 # Run the self-healer (3 cycles for demo)
-python agent/healer.py
+SELF_HEALER_BACKEND=gemini python agent/healer.py
 ```
 
 ## 🎥 Demo
 
-See the agent in action: it detects issues from the dashboard, reasons about them, and fixes them autonomously.
+See the agent open a browser, screenshot the dashboard, detect issues, and click fix buttons autonomously.
 
 [Demo video link — 1 minute]
 
@@ -50,20 +54,22 @@ See the agent in action: it detects issues from the dashboard, reasons about the
 **Best Usage of Gemini 3.5** ($5,000)
 
 Uses **Computer Use in Gemini 3.5 Flash** to:
-- Analyze dashboard screenshots visually
-- Detect anomalies (auth failures, errors, stale data)
-- Generate and execute fix actions via API calls
+- Take screenshots of the running dashboard
+- Detect anomalies visually (auth failures, errors)
+- Generate structured UI actions (click, type, scroll)
+- Execute them via Playwright browser automation
 
 ## 📁 Project Structure
 
 ```
 neverzero-self-healer/
 ├── agent/
-│   ├── gemini_computer_use.py   # Gemini 3.5 Flash Computer Use integration
-│   ├── neverzero_client.py      # NeverZero API client
-│   └── healer.py                # Main self-healing orchestrator
+│   ├── computer_use.py          # Genuine Computer Use: Gemini + Playwright
+│   ├── reasoning_backend.py     # Backend abstraction (Kimi / Gemini / simulate)
+│   ├── neverzero_client.py      # NeverZero API client (fallback)
+│   └── healer.py                # Main orchestrator
 ├── dashboard/
-│   └── health_dashboard.py      # Real-time metrics dashboard
+│   └── health_dashboard.py      # Interactive dashboard with Fix Auth / Clear Cache buttons
 ├── skills/
 │   ├── AGENTS.md                # Agent persona (required for Gemini prize)
 │   └── SKILL.md                 # Technical skill documentation
@@ -75,31 +81,55 @@ neverzero-self-healer/
 ## 🧠 How It Works
 
 ```
-┌─────────────────┐     screenshot      ┌──────────────────────────┐
-│ Health Dashboard│ ─────────────────────▶│ Gemini 3.5 Flash         │
-│  (localhost:8080)│                      │  Computer Use            │
-└─────────────────┘                       │                          │
-                                          │ 1. Analyze screenshot    │
-                                          │ 2. Gather context        │
-                                          │ 3. Reason about issues   │
-                                          │ 4. Generate fix actions  │
-                                          └──────────────────────────┘
-                                                       │
-                                                       ▼
-                                          ┌──────────────────────────┐
-                                          │ NeverZero API            │
-                                          │  (fix auth, clear cache,  │
-                                          │   trigger compaction)     │
-                                          └──────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Gemini 3.5 Flash Computer Use                              │
+│  ┌──────────────┐     ┌──────────────┐    ┌──────────────┐ │
+│  │ Screenshot   │────▶│ Analyze UI   │───▶│ Generate     │ │
+│  │              │     │              │    │ Actions      │ │
+│  └──────────────┘     └──────────────┘    └──────────────┘ │
+│         ▲                                           │       │
+│         │                                           │       │
+│  Playwright                                         │       │
+│  ┌──────────────┐     ┌──────────────┐              │       │
+│  │ Execute      │◀────│ Click / Type │◀─────────────┘       │
+│  │ Actions      │     │ / Scroll     │                      │
+│  └──────────────┘     └──────────────┘                      │
+│         │                                                   │
+│         ▼                                                   │
+│  ┌──────────────┐                                          │
+│  │ Dashboard    │                                          │
+│  │ (localhost) │                                          │
+│  └──────────────┘                                          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## 📝 Key Features Built During Hackathon
+## 🔑 Key Features Built During Hackathon
 
-- **Visual anomaly detection** via Gemini 3.5 Flash Computer Use screenshots
-- **Autonomous healing** — no human in the loop for known issue types
-- **Contextual reasoning** — combines visual + telemetry data for diagnosis
-- **Audit trail** — every cycle, observation, and fix is logged
-- **Extensible fix catalog** — easy to add new fix types
+- **Genuine Computer Use** — model generates click coordinates, not just text suggestions
+- **Playwright automation** — executes real UI actions on a live browser
+- **Visual verification** — takes post-fix screenshots to confirm the fix worked
+- **Multi-step reasoning** — agent iterates: screenshot → reason → act → verify
+- **Extensible** — easy to add new dashboard buttons and fix types
+
+## 📝 Computer Use Example
+
+The Gemini model returns structured actions like:
+
+```json
+{
+  "action": "click",
+  "x": 640,
+  "y": 400
+}
+```
+
+The agent executes this via Playwright:
+
+```python
+page.mouse.click(640, 400)
+```
+
+Then takes another screenshot to verify the fix.
 
 ## 👥 Team
 
