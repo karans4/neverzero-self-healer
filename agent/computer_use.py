@@ -46,8 +46,9 @@ class ComputerUseAgent:
     def _init_llm(self):
         if self.backend == Backend.KIMI:
             self.api_key = os.getenv("KIMI_API_KEY")
-            self.base_url = os.getenv("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
-            self.model = os.getenv("KIMI_MODEL", "kimi-latest")
+            raw_url = os.getenv("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
+            self.base_url = raw_url.rstrip("/")
+            self.model = os.getenv("KIMI_MODEL", "kimi-for-coding")
             if not self.api_key:
                 raise RuntimeError("Set KIMI_API_KEY for KIMI backend")
         elif self.backend == Backend.GEMINI:
@@ -71,7 +72,7 @@ class ComputerUseAgent:
 
     def _call_kimi(self, messages: List[Dict]) -> str:
         """Call Kimi API and return text response."""
-        url = f"{self.base_url}/chat/completions"
+        url = f"{self.base_url}/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
